@@ -1,19 +1,20 @@
-lines: 2
-cols: 6
+cols: 2
 images:
-  - image: sample/test.jpg
-    text: test 1
-  - image: sample/test.jpg
+  - image: sample/corrosif.jpg
+    text: Corrosif
+  - image: sample/crayons.jpg
+    text: Crayons
+  - image: sample/test2.jpg
     text: test 2
-  - image: sample/test.jpg
-    text: test 3
-  - image: sample/test.jpg
+  - image: sample/interdit.png
+    text: Interdit !
+  - image: sample/corrosif.jpg
     text: test 4
-  - image: sample/test.jpg
+  - image: sample/corrosif.jpg
     text: test 5
-  - image: sample/test.jpg
+  - image: sample/corrosif.jpg
     text: test 6
-  - image: sample/test.jpg
+  - image: sample/corrosif.jpg
     text: test 7
-  - image: sample/test.jpg
+  - image: sample/corrosif.jpg
     text: test 8

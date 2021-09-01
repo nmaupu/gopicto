@@ -12,7 +12,7 @@ import (
 const (
 	MarginsTopBottomPt = 5.67
 	MarginsLeftRightPt = 5.67
-	CellTextHighPt     = 56.7
+	CellTextHighPt     = 35
 )
 
 func main() {
@@ -54,6 +54,8 @@ func main() {
 
 	mx := 0.0 // pt
 	my := 0.0 // pt
+	imgMaxWpx := 0.0
+	imgMaxHpx := 0.0
 	for k, iw := range cfg.Images {
 		w, h, err := getImageDimension(iw.Image)
 		if err != nil {
@@ -61,13 +63,26 @@ func main() {
 			os.Exit(1)
 		}
 
-		imgRatio := imgWpt / float64(w)
-		imgWpx := float64(w) * imgRatio
-		imgHpx := float64(h) * imgRatio
+		// imgWpx is set once and for all
+		// All other images are calculated from this max width
+		if imgMaxWpx == 0.0 {
+			baseRatio := imgWpt / float64(w)
+			imgMaxWpx = float64(w) * baseRatio
+			imgMaxHpx = float64(h) * baseRatio
+		}
 
-		printPdfCell(&pdf, iw, mx, my, imgWpx, imgHpx)
+		var imageRatio float64
+		if w > h {
+			imageRatio = float64(w) / imgMaxWpx
+		} else {
+			imageRatio = float64(h) / imgMaxHpx
+		}
+		imgWpx := float64(w) / imageRatio
+		imgHpx := float64(h) / imageRatio
 
-		cellHpt := imgHpx + 2*MarginsTopBottomPt + CellTextHighPt + 2*MarginsTopBottomPt
+		cellHpt := imgMaxHpx + 4*MarginsTopBottomPt + CellTextHighPt
+		printPdfCell(&pdf, iw, mx, my, imgWpx, imgHpx, gopdf.Rect{W: cellWpt - 2*MarginsLeftRightPt, H: cellHpt})
+
 		mx += cellWpt
 
 		if mx >= gopdf.PageSizeA4.W { // need to go to the next line
@@ -75,34 +90,34 @@ func main() {
 			my += cellHpt + MarginsTopBottomPt*2
 		}
 
-		if my+cellHpt >= gopdf.PageSizeA4.H && k < len(cfg.Images)-1 { // need a new page
-			pdf.AddPage()
+		if my+cellHpt >= gopdf.PageSizeA4.H { // need a new page
+			printCutLines(&pdf, cfg, cellWpt, cellHpt+MarginsTopBottomPt*2)
 			mx = 0
 			my = 0
+
+			if k < len(cfg.Images)-1 {
+				pdf.AddPage()
+			}
 		}
+
 	}
 
 	pdf.WritePdf("/tmp/test.pdf")
 
 }
 
-func printPdfCell(pdf *gopdf.GoPdf, iw config.ImageWord, x, y float64, imgW float64, imgH float64) {
-	cellRect := gopdf.Rect{
-		W: imgW + 2*MarginsLeftRightPt,
-		H: imgH + 2*MarginsTopBottomPt + CellTextHighPt + 2*MarginsTopBottomPt,
-	}
-
+func printPdfCell(pdf *gopdf.GoPdf, iw config.ImageWord, x, y float64, imgW float64, imgH float64, cell gopdf.Rect) {
 	pdf.SetLineWidth(1)
-	pdf.RectFromUpperLeft(x+MarginsLeftRightPt, y+MarginsTopBottomPt, cellRect.W, cellRect.H)
+	pdf.RectFromUpperLeft(x+MarginsLeftRightPt, y+MarginsTopBottomPt, cell.W, cell.H)
 
 	pdf.Image(iw.Image, x+MarginsLeftRightPt*2, y+MarginsTopBottomPt*2, &gopdf.Rect{W: imgW, H: imgH})
 
 	pdf.SetX(x + MarginsLeftRightPt)
-	pdf.SetY(y + imgH + 2*MarginsTopBottomPt)
+	pdf.SetY(y + MarginsTopBottomPt + cell.H - CellTextHighPt)
 	pdf.CellWithOption(
 		&gopdf.Rect{
-			W: cellRect.W,
-			H: CellTextHighPt + 2*MarginsTopBottomPt,
+			W: cell.W,
+			H: CellTextHighPt,
 		},
 		iw.Text,
 		gopdf.CellOption{
@@ -123,4 +138,25 @@ func getImageDimension(imagePath string) (int, int, error) {
 	}
 
 	return image.Width, image.Height, nil
+}
+
+func printCutLines(pdf *gopdf.GoPdf, cfg config.PDF, incX, incY float64) {
+	var x float64
+
+	for i := 1; i < cfg.Cols; i++ {
+		x = float64(i) * incX
+		pdf.SetLineWidth(1)
+		pdf.SetLineType("dotted")
+		pdf.Line(x, 0, x, gopdf.PageSizeA4.H)
+		x += incX
+	}
+
+	var y float64
+	for y < gopdf.PageSizeA4.H {
+		y += incY
+		pdf.SetLineWidth(1)
+		pdf.SetLineType("dotted")
+		pdf.Line(0, y, gopdf.PageSizeA4.W, y)
+		y += incY
+	}
 }
