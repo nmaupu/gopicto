@@ -1,9 +1,9 @@
 cols: 2
 images:
-  - image: sample/corrosif.jpg
-    text: Corrosif
   - image: sample/crayons.jpg
     text: Crayons
+  - image: sample/corrosif.jpg
+    text: Corrosif
   - image: sample/test2.jpg
     text: test 2
   - image: sample/interdit.png
