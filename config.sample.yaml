@@ -1,7 +1,18 @@
 cols: 2
+lines: 3
+text:
+  ratio: 1/4
+  color: steelblue
+  firstLetterColor: tomato
 images:
+  - image: sample/jap.jpg
+    text: Geisha
   - image: sample/crayons.jpg
     text: Crayons
+  - image: sample/panorama.jpg
+    text: Paysage
+  - image: sample/carcrash.jpg
+    text: Accident
   - image: sample/corrosif.jpg
     text: Corrosif
   - image: sample/test2.jpg
@@ -18,3 +29,15 @@ images:
     text: test 7
   - image: sample/corrosif.jpg
     text: test 8
+  - image: sample/corrosif.jpg
+    text: Corrosif
+  - image: sample/test2.jpg
+    text: test 2
+  - image: sample/interdit.png
+    text: Interdit !
+  - image: sample/corrosif.jpg
+    text: test 4
+  - image: sample/corrosif.jpg
+    text: test 5
+  - image: sample/corrosif.jpg
+    text: test 6
