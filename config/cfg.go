@@ -13,6 +13,7 @@ type ImageWord struct {
 }
 
 type Text struct {
+	Font             string  `mapstructure:"font"`
 	Ratio            float64 `mapstructure:"ratio"`
 	Color            Color   `mapstructure:"color"`
 	FirstLetterColor Color   `mapstructure:"firstLetterColor"`

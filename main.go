@@ -8,6 +8,7 @@ import (
 	"github.com/signintech/gopdf"
 	"github.com/spf13/viper"
 	"image"
+	"io/ioutil"
 	"os"
 )
 
@@ -16,6 +17,8 @@ const (
 	MarginsLeftRightPt = 5.67 / 2
 	PaddingLeftRightPt = 3.0
 	PaddingTopBottomPt = 3.0
+
+	DefaultFont = "rockwell"
 )
 
 func main() {
@@ -47,19 +50,45 @@ func main() {
 		cfg.Text.Ratio = 1 / 5
 	}
 
+	if cfg.Text.Font == "" {
+		fmt.Printf("text.font is not provided, using default %s\n", DefaultFont)
+		reader, err := config.LoadFont(DefaultFont)
+		if err != nil {
+			fmt.Printf("Unable to load font %s, err=%v\n", DefaultFont, err)
+			os.Exit(1)
+		}
+
+		file, err := os.CreateTemp("", DefaultFont)
+		if err != nil {
+			fmt.Printf("unable to create temporary file for font %s, err=%v\n", DefaultFont, err)
+			os.Exit(1)
+		}
+		defer file.Close()
+		cfg.Text.Font = file.Name()
+		defer os.Remove(cfg.Text.Font)
+
+		data, err := ioutil.ReadAll(reader)
+		if err != nil {
+			fmt.Printf("unable to read data for font %s, err=%v\n", DefaultFont, err)
+			os.Exit(1)
+		}
+
+		ioutil.WriteFile(file.Name(), data, 0644)
+	}
+
 	pdf := gopdf.GoPdf{}
 	// Unit is pt as gopdf's unit support seems to be broken
 	pdf.Start(gopdf.Config{
 		PageSize: *gopdf.PageSizeA4,
 	})
 
-	err = pdf.AddTTFFont("rockwell", "ttf/rockwell.ttf")
+	err = pdf.AddTTFFont("myfont", cfg.Text.Font)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
 
-	err = pdf.SetFont("rockwell", "", 14)
+	err = pdf.SetFont("myfont", "", 14)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
@@ -122,7 +151,7 @@ func printPdfCell(pdf *gopdf.GoPdf, textConfig config.Text, c draw.PictoCell) {
 			h = imgH * w / imgW
 		}
 	} else {
-		// Image should fill the width of the cell
+		// Image should fill the width of the cell except if height is more than available space
 		w = c.W - 2*PaddingLeftRightPt
 		h = imgH * w / imgW
 
@@ -141,6 +170,10 @@ func printPdfCell(pdf *gopdf.GoPdf, textConfig config.Text, c draw.PictoCell) {
 		H: h,
 	})
 
+	// Handling text
+	if len(c.Text) == 0 {
+		return
+	}
 	textWidth, _ := pdf.MeasureTextWidth(c.Text)
 	pdf.SetX(c.X + c.W/2 - textWidth/2)
 	pdf.SetY(c.Y + c.H - cellTextHeightPt/2)
