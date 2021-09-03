@@ -1,8 +1,8 @@
-cols: 2
+cols: 3
 lines: 3
 text:
   #font: /some/font.ttf
-  ratio: 1/4
+  ratio: 1/6
   color: steelblue
   firstLetterColor: tomato
 images:

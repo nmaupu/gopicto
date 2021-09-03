@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/viper"
 	"image"
 	"io/ioutil"
+	"math"
 	"os"
 )
 
@@ -18,7 +19,8 @@ const (
 	PaddingLeftRightPt = 3.0
 	PaddingTopBottomPt = 3.0
 
-	DefaultFont = "rockwell"
+	DefaultFont    = "rockwell"
+	fontFamilyName = "myfont"
 )
 
 func main() {
@@ -82,13 +84,7 @@ func main() {
 		PageSize: *gopdf.PageSizeA4,
 	})
 
-	err = pdf.AddTTFFont("myfont", cfg.Text.Font)
-	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	err = pdf.SetFont("myfont", "", 14)
+	err = pdf.AddTTFFont(fontFamilyName, cfg.Text.Font)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
@@ -98,12 +94,23 @@ func main() {
 	cellH := gopdf.PageSizeA4.H / float64(cfg.Lines)
 	page := 0
 	emptyPage := true
+
+	// Getting font size to set
+	longestText := ""
+	for _, iw := range cfg.ImageWords {
+		if len(iw.Text) > len(longestText) {
+			longestText = iw.Text
+		}
+	}
+
+	fontSize := setMaxFontSize(&pdf, longestText, cellW, cellH*cfg.Text.Ratio)
+
 mainLoop:
 	for {
 		for l := 0; l < cfg.Lines; l++ {
 			for c := 0; c < cfg.Cols; c++ {
 				idx := page*cfg.Cols*cfg.Lines + cfg.Cols*l + c
-				if idx >= len(cfg.Images) { // no more images
+				if idx >= len(cfg.ImageWords) { // no more images
 					break mainLoop
 				}
 
@@ -119,10 +126,10 @@ mainLoop:
 					float64(l)*cellH,
 					cellW,
 					cellH,
-					cfg.Images[idx],
+					cfg.ImageWords[idx],
 				)
 
-				printPdfCell(&pdf, cfg.Text, pc)
+				printPdfCell(&pdf, cfg.Text, pc, fontSize)
 			}
 		}
 
@@ -131,10 +138,9 @@ mainLoop:
 	}
 
 	pdf.WritePdf("/tmp/test.pdf")
-
 }
 
-func printPdfCell(pdf *gopdf.GoPdf, textConfig config.Text, c draw.PictoCell) {
+func printPdfCell(pdf *gopdf.GoPdf, textConfig config.Text, c draw.PictoCell, fontSize int) {
 	pdf.SetLineWidth(1)
 	pdf.RectFromUpperLeft(c.X, c.Y, c.W, c.H)
 
@@ -174,9 +180,13 @@ func printPdfCell(pdf *gopdf.GoPdf, textConfig config.Text, c draw.PictoCell) {
 	if len(c.Text) == 0 {
 		return
 	}
+
+	//pdf.RectFromUpperLeft(c.X, c.Y+c.H-cellTextHeightPt, c.W, cellTextHeightPt)
+
 	textWidth, _ := pdf.MeasureTextWidth(c.Text)
+	textHeight := gopdf.ContentObjCalTextHeight(fontSize)
 	pdf.SetX(c.X + c.W/2 - textWidth/2)
-	pdf.SetY(c.Y + c.H - cellTextHeightPt/2)
+	pdf.SetY(c.Y + c.H - cellTextHeightPt/2 + textHeight/2)
 	pdf.SetTextColor(textConfig.FirstLetterColor.AsUints())
 	pdf.Text(string(c.Text[0]))
 	pdf.SetTextColor(textConfig.Color.AsUints())
@@ -217,4 +227,42 @@ func printCutLines(pdf *gopdf.GoPdf, cfg config.PDF, incX, incY float64) {
 		pdf.Line(0, y, gopdf.PageSizeA4.W, y)
 		y += incY
 	}
+}
+
+func setMaxFontSize(pdf *gopdf.GoPdf, text string, maxWidth, maxHeight float64) int {
+	fontSize := 110
+	inc := -1
+	for {
+		fontSize += inc
+
+		if fontSize < int(math.Abs(float64(inc))) {
+			break // no size found
+		}
+
+		err := pdf.SetFont(fontFamilyName, "", fontSize)
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+
+		textWidth, _ := pdf.MeasureTextWidth(text)
+		textHeight := gopdf.ContentObjCalTextHeight(fontSize)
+		//textHeightWithMargin := textHeight + textHeight*70/100
+		if textWidth < maxWidth && textHeight < maxHeight {
+			// Height does not take accents and letters like p, q, etc.
+			// Taking 50% size because why not 🤷‍
+			newFontSize := float64(fontSize) * 0.5
+			fontSize = int(newFontSize)
+			err := pdf.SetFont(fontFamilyName, "", fontSize)
+			if err != nil {
+				fmt.Println(err.Error())
+				os.Exit(1)
+			}
+
+			fmt.Printf("Font size %d is ok\n", fontSize)
+			break
+		}
+	}
+
+	return fontSize
 }

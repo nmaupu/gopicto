@@ -1,10 +1,10 @@
 package config
 
 type PDF struct {
-	Cols   int         `mapstructure:"cols"`
-	Lines  int         `mapstructure:"lines"`
-	Text   Text        `mapstructure:"text"`
-	Images []ImageWord `mapstructure:"images"`
+	Cols       int         `mapstructure:"cols"`
+	Lines      int         `mapstructure:"lines"`
+	Text       Text        `mapstructure:"text"`
+	ImageWords []ImageWord `mapstructure:"images"`
 }
 
 type ImageWord struct {
