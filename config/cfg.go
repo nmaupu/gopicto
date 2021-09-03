@@ -1,10 +1,18 @@
 package config
 
+const (
+	Portrait  = Orientation("portrait")
+	Landscape = Orientation("landscape")
+)
+
+type Orientation string
+
 type PDF struct {
-	Cols       int         `mapstructure:"cols"`
-	Lines      int         `mapstructure:"lines"`
-	Text       Text        `mapstructure:"text"`
-	ImageWords []ImageWord `mapstructure:"images"`
+	Cols        int         `mapstructure:"cols"`
+	Lines       int         `mapstructure:"lines"`
+	Orientation Orientation `mapstructure:"orientation"`
+	Text        Text        `mapstructure:"text"`
+	ImageWords  []ImageWord `mapstructure:"images"`
 }
 
 type ImageWord struct {

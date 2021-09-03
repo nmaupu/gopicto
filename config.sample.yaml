@@ -1,5 +1,6 @@
 cols: 3
 lines: 3
+orientation: landscape
 text:
   #font: /some/font.ttf
   ratio: 1/6

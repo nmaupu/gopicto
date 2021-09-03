@@ -23,11 +23,16 @@ const (
 	fontFamilyName = "myfont"
 )
 
+var (
+	PageSize *gopdf.Rect
+)
+
 func main() {
 	decodeHook := mapstructure.ComposeDecodeHookFunc(
 		mapstructure.StringToSliceHookFunc(","),
 		config.MapstructureStringToRatio(),
 		config.MapstructureStringToColor(),
+		config.MapstructureStringToOrientation(),
 	)
 
 	cfg := config.PDF{}
@@ -79,9 +84,14 @@ func main() {
 	}
 
 	pdf := gopdf.GoPdf{}
+
+	PageSize = gopdf.PageSizeA4
+	if cfg.Orientation == config.Landscape {
+		PageSize = &gopdf.Rect{W: gopdf.PageSizeA4.H, H: gopdf.PageSizeA4.W}
+	}
 	// Unit is pt as gopdf's unit support seems to be broken
 	pdf.Start(gopdf.Config{
-		PageSize: *gopdf.PageSizeA4,
+		PageSize: *PageSize,
 	})
 
 	err = pdf.AddTTFFont(fontFamilyName, cfg.Text.Font)
@@ -90,8 +100,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	cellW := gopdf.PageSizeA4.W / float64(cfg.Cols)
-	cellH := gopdf.PageSizeA4.H / float64(cfg.Lines)
+	cellW := PageSize.W / float64(cfg.Cols)
+	cellH := PageSize.H / float64(cfg.Lines)
 	page := 0
 	emptyPage := true
 
@@ -215,16 +225,16 @@ func printCutLines(pdf *gopdf.GoPdf, cfg config.PDF, incX, incY float64) {
 		x = float64(i) * incX
 		pdf.SetLineWidth(1)
 		pdf.SetLineType("dotted")
-		pdf.Line(x, 0, x, gopdf.PageSizeA4.H)
+		pdf.Line(x, 0, x, PageSize.H)
 		x += incX
 	}
 
 	var y float64
-	for y < gopdf.PageSizeA4.H {
+	for y < PageSize.H {
 		y += incY
 		pdf.SetLineWidth(1)
 		pdf.SetLineType("dotted")
-		pdf.Line(0, y, gopdf.PageSizeA4.W, y)
+		pdf.Line(0, y, PageSize.W, y)
 		y += incY
 	}
 }

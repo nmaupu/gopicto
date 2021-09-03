@@ -54,3 +54,18 @@ func MapstructureStringToColor() mapstructure.DecodeHookFunc {
 		return Color{rgb[0], rgb[1], rgb[2]}, nil
 	}
 }
+
+func MapstructureStringToOrientation() mapstructure.DecodeHookFunc {
+	return func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
+		if f.Kind() != reflect.String || t != reflect.TypeOf(Orientation("")) {
+			return data, nil
+		}
+
+		raw := data.(string)
+		if raw != string(Portrait) && raw != string(Landscape) {
+			return nil, fmt.Errorf("orientation can only be portrait or landscape")
+		}
+
+		return Orientation(raw), nil
+	}
+}
