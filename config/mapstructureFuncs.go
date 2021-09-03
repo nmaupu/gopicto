@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func MapstructureStringToRatio() mapstructure.DecodeHookFunc {
+func MapstructureStringToFloat64Expr() mapstructure.DecodeHookFunc {
 	return func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
 		if f.Kind() != reflect.String || t.Kind() != reflect.Float64 {
 			return data, nil

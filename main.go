@@ -14,12 +14,7 @@ import (
 )
 
 const (
-	MarginsTopBottomPt = 5.67 / 2
-	MarginsLeftRightPt = 5.67 / 2
-	PaddingLeftRightPt = 3.0
-	PaddingTopBottomPt = 3.0
-
-	DefaultFont    = "rockwell"
+	defaultFont    = "rockwell"
 	fontFamilyName = "myfont"
 )
 
@@ -30,7 +25,7 @@ var (
 func main() {
 	decodeHook := mapstructure.ComposeDecodeHookFunc(
 		mapstructure.StringToSliceHookFunc(","),
-		config.MapstructureStringToRatio(),
+		config.MapstructureStringToFloat64Expr(),
 		config.MapstructureStringToColor(),
 		config.MapstructureStringToOrientation(),
 	)
@@ -48,26 +43,29 @@ func main() {
 		os.Exit(1)
 	}
 
-	if cfg.Lines == 0 || cfg.Cols == 0 {
+	if cfg.Page.Lines == 0 || cfg.Page.Cols == 0 {
 		fmt.Println("Invalid configuration: cols and lines have to be > 0")
 		os.Exit(1)
 	}
+
+	cfg.Page.Margins.InitWithDefaults(config.DefaultMargins)
+	cfg.Page.Paddings.InitWithDefaults(config.DefaultPaddings)
 
 	if cfg.Text.Ratio == 0.0 {
 		cfg.Text.Ratio = 1 / 5
 	}
 
 	if cfg.Text.Font == "" {
-		fmt.Printf("text.font is not provided, using default %s\n", DefaultFont)
-		reader, err := config.LoadFont(DefaultFont)
+		fmt.Printf("text.font is not provided, using default %s\n", defaultFont)
+		reader, err := config.LoadFont(defaultFont)
 		if err != nil {
-			fmt.Printf("Unable to load font %s, err=%v\n", DefaultFont, err)
+			fmt.Printf("Unable to load font %s, err=%v\n", defaultFont, err)
 			os.Exit(1)
 		}
 
-		file, err := os.CreateTemp("", DefaultFont)
+		file, err := os.CreateTemp("", defaultFont)
 		if err != nil {
-			fmt.Printf("unable to create temporary file for font %s, err=%v\n", DefaultFont, err)
+			fmt.Printf("unable to create temporary file for font %s, err=%v\n", defaultFont, err)
 			os.Exit(1)
 		}
 		defer file.Close()
@@ -76,7 +74,7 @@ func main() {
 
 		data, err := ioutil.ReadAll(reader)
 		if err != nil {
-			fmt.Printf("unable to read data for font %s, err=%v\n", DefaultFont, err)
+			fmt.Printf("unable to read data for font %s, err=%v\n", defaultFont, err)
 			os.Exit(1)
 		}
 
@@ -86,7 +84,7 @@ func main() {
 	pdf := gopdf.GoPdf{}
 
 	PageSize = gopdf.PageSizeA4
-	if cfg.Orientation == config.Landscape {
+	if cfg.Page.Orientation == config.Landscape {
 		PageSize = &gopdf.Rect{W: gopdf.PageSizeA4.H, H: gopdf.PageSizeA4.W}
 	}
 	// Unit is pt as gopdf's unit support seems to be broken
@@ -100,8 +98,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	cellW := PageSize.W / float64(cfg.Cols)
-	cellH := PageSize.H / float64(cfg.Lines)
+	cellW := PageSize.W / float64(cfg.Page.Cols)
+	cellH := PageSize.H / float64(cfg.Page.Lines)
 	page := 0
 	emptyPage := true
 
@@ -117,9 +115,9 @@ func main() {
 
 mainLoop:
 	for {
-		for l := 0; l < cfg.Lines; l++ {
-			for c := 0; c < cfg.Cols; c++ {
-				idx := page*cfg.Cols*cfg.Lines + cfg.Cols*l + c
+		for l := 0; l < cfg.Page.Lines; l++ {
+			for c := 0; c < cfg.Page.Cols; c++ {
+				idx := page*cfg.Page.Cols*cfg.Page.Lines + cfg.Page.Cols*l + c
 				if idx >= len(cfg.ImageWords) { // no more images
 					break mainLoop
 				}
@@ -130,8 +128,7 @@ mainLoop:
 				}
 
 				pc := draw.NewPictoCell(
-					MarginsTopBottomPt,
-					MarginsLeftRightPt,
+					cfg.Page.Margins,
 					float64(c)*cellW,
 					float64(l)*cellH,
 					cellW,
@@ -139,7 +136,7 @@ mainLoop:
 					cfg.ImageWords[idx],
 				)
 
-				printPdfCell(&pdf, cfg.Text, pc, fontSize)
+				printPdfCell(&pdf, cfg, pc, fontSize)
 			}
 		}
 
@@ -150,36 +147,36 @@ mainLoop:
 	pdf.WritePdf("/tmp/test.pdf")
 }
 
-func printPdfCell(pdf *gopdf.GoPdf, textConfig config.Text, c draw.PictoCell, fontSize int) {
+func printPdfCell(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize int) {
 	pdf.SetLineWidth(1)
 	pdf.RectFromUpperLeft(c.X, c.Y, c.W, c.H)
 
-	cellTextHeightPt := c.H * textConfig.Ratio
+	cellTextHeightPt := c.H * cfg.Text.Ratio
 	imgW, imgH, _ := getImageDimension(c.Image)
 	var w, h float64
 	if c.W >= c.H {
 		// Image should fill the height of the cell except if larger than high
-		h = c.H - cellTextHeightPt - 2*PaddingTopBottomPt
+		h = c.H - cellTextHeightPt - cfg.Page.Paddings.TopBottom()
 		w = imgW * h / imgH
 
-		if w > c.W-2*MarginsLeftRightPt { // image width is wider than the outer cell
-			w = c.W - 2*PaddingLeftRightPt
+		if w > c.W-cfg.Page.Margins.LeftRight() { // image width is wider than the outer cell
+			w = c.W - cfg.Page.Paddings.LeftRight()
 			h = imgH * w / imgW
 		}
 	} else {
 		// Image should fill the width of the cell except if height is more than available space
-		w = c.W - 2*PaddingLeftRightPt
+		w = c.W - cfg.Page.Paddings.LeftRight()
 		h = imgH * w / imgW
 
-		if h > c.H-cellTextHeightPt-2*PaddingTopBottomPt { // image height is higher than the outer cell
-			h = c.H - cellTextHeightPt - 2*PaddingTopBottomPt
+		if h > c.H-cellTextHeightPt-cfg.Page.Paddings.TopBottom() { // image height is higher than the outer cell
+			h = c.H - cellTextHeightPt - cfg.Page.Paddings.TopBottom()
 			w = imgW * h / imgH
 		}
 	}
 
 	var x, y float64
 	x = c.X + (c.W-w)/2
-	y = c.Y + PaddingTopBottomPt
+	y = c.Y + cfg.Page.Paddings.Top()
 
 	pdf.Image(c.Image, x, y, &gopdf.Rect{
 		W: w,
@@ -197,9 +194,9 @@ func printPdfCell(pdf *gopdf.GoPdf, textConfig config.Text, c draw.PictoCell, fo
 	textHeight := gopdf.ContentObjCalTextHeight(fontSize)
 	pdf.SetX(c.X + c.W/2 - textWidth/2)
 	pdf.SetY(c.Y + c.H - cellTextHeightPt/2 + textHeight/2)
-	pdf.SetTextColor(textConfig.FirstLetterColor.AsUints())
+	pdf.SetTextColor(cfg.Text.FirstLetterColor.AsUints())
 	pdf.Text(string(c.Text[0]))
-	pdf.SetTextColor(textConfig.Color.AsUints())
+	pdf.SetTextColor(cfg.Text.Color.AsUints())
 	pdf.Text(c.Text[1:])
 }
 
@@ -221,7 +218,7 @@ func getImageDimension(imagePath string) (float64, float64, error) {
 func printCutLines(pdf *gopdf.GoPdf, cfg config.PDF, incX, incY float64) {
 	var x float64
 
-	for i := 1; i < cfg.Cols; i++ {
+	for i := 1; i < cfg.Page.Cols; i++ {
 		x = float64(i) * incX
 		pdf.SetLineWidth(1)
 		pdf.SetLineType("dotted")

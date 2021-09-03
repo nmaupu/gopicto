@@ -8,12 +8,12 @@ type PictoCell struct {
 	W, H float64
 }
 
-func NewPictoCell(marginTB, marginLR, x, y, w, h float64, iw config.ImageWord) PictoCell {
+func NewPictoCell(margins config.Margins, x, y, w, h float64, iw config.ImageWord) PictoCell {
 	return PictoCell{
 		ImageWord: iw,
-		X:         x + marginLR,
-		Y:         y + marginTB,
-		W:         w - marginLR*2,
-		H:         h - marginTB*2,
+		X:         x + margins.Left(),
+		Y:         y + margins.Top(),
+		W:         w - margins.LeftRight(),
+		H:         h - margins.TopBottom(),
 	}
 }

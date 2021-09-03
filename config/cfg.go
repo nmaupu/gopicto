@@ -5,14 +5,79 @@ const (
 	Landscape = Orientation("landscape")
 )
 
+var (
+	DefaultMargins  = Margins{float64ptr(2.835), float64ptr(2.835), float64ptr(2.835), float64ptr(2.835)}
+	DefaultPaddings = Margins{float64ptr(3), float64ptr(3), float64ptr(3), float64ptr(3)}
+)
+
 type Orientation string
 
 type PDF struct {
+	Page       Page        `mapstructure:"page"`
+	Text       Text        `mapstructure:"text"`
+	ImageWords []ImageWord `mapstructure:"images"`
+}
+
+type Page struct {
 	Cols        int         `mapstructure:"cols"`
 	Lines       int         `mapstructure:"lines"`
 	Orientation Orientation `mapstructure:"orientation"`
-	Text        Text        `mapstructure:"text"`
-	ImageWords  []ImageWord `mapstructure:"images"`
+	Margins     Margins     `mapstructure:"margins"`
+	Paddings    Margins     `mapstructure:"paddings"`
+}
+
+type Margins struct {
+	T *float64 `mapstructure:"top"`
+	B *float64 `mapstructure:"bottom"`
+	L *float64 `mapstructure:"left"`
+	R *float64 `mapstructure:"right"`
+}
+
+func (m *Margins) InitWithDefaults(defaults Margins) {
+	if m.T == nil {
+		m.T = defaults.T
+	}
+	if m.B == nil {
+		m.B = defaults.B
+	}
+	if m.L == nil {
+		m.L = defaults.L
+	}
+	if m.R == nil {
+		m.R = defaults.R
+	}
+}
+
+func (m Margins) Top() float64 {
+	if m.T == nil {
+		return 0
+	}
+	return *m.T
+}
+func (m Margins) Bottom() float64 {
+	if m.B == nil {
+		return 0
+	}
+	return *m.B
+}
+func (m Margins) Left() float64 {
+	if m.L == nil {
+		return 0
+	}
+	return *m.L
+}
+func (m Margins) Right() float64 {
+	if m.R == nil {
+		return 0
+	}
+	return *m.R
+}
+
+func (m Margins) LeftRight() float64 {
+	return m.Left() + m.Right()
+}
+func (m Margins) TopBottom() float64 {
+	return m.Top() + m.Bottom()
 }
 
 type ImageWord struct {
@@ -45,4 +110,8 @@ func (c Color) Blue() uint8 {
 
 func (c Color) AsUints() (uint8, uint8, uint8) {
 	return c.R, c.G, c.B
+}
+
+func float64ptr(f float64) *float64 {
+	return &f
 }
