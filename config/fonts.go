@@ -7,6 +7,8 @@ import (
 	"io"
 )
 
+const DefaultFont = "rockwell"
+
 type Font string
 
 var (
