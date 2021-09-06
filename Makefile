@@ -10,6 +10,10 @@ all: $(BIN_NAME)
 $(BIN_NAME): $(BIN)
 	go build -o $(BIN)/$(BIN_NAME) $(LDFLAGS)
 
+.PHONY: release
+release:
+	GOOS=darwin GOARCH=amd64 go build -o $(BIN)/$(BIN_NAME)-$(TAG_NAME)-darwin_x64 $(LDFLAGS)
+
 $(BIN):
 	mkdir -p $(BIN)
 
