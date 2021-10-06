@@ -85,6 +85,7 @@ func initConfig() {
 		readCfgLogger.Fatal().Msg("Invalid configuration: cols and lines have to be > 0")
 	}
 
+	cfg.Page.PageMargins.InitWithDefaults(config.DefaultPageMargins)
 	cfg.Page.Margins.InitWithDefaults(config.DefaultMargins)
 	cfg.Page.Paddings.InitWithDefaults(config.DefaultPaddings)
 
@@ -158,8 +159,8 @@ func generateCmdFunc() {
 			Msg("unable to use font")
 	}
 
-	cellW := pageSize.W / float64(cfg.Page.Cols)
-	cellH := pageSize.H / float64(cfg.Page.Lines)
+	cellW := (pageSize.W - cfg.Page.PageMargins.Left() - cfg.Page.PageMargins.Right()) / float64(cfg.Page.Cols)
+	cellH := (pageSize.H - cfg.Page.PageMargins.Top() - cfg.Page.PageMargins.Bottom()) / float64(cfg.Page.Lines)
 	page := 0
 	emptyPage := true
 
@@ -189,8 +190,8 @@ mainLoop:
 
 				pc := draw.NewPictoCell(
 					cfg.Page.Margins,
-					float64(c)*cellW,
-					float64(l)*cellH,
+					cfg.Page.PageMargins.Left()+float64(c)*cellW,
+					cfg.Page.PageMargins.Top()+float64(l)*cellH,
 					cellW,
 					cellH,
 					cfg.ImageWords[idx],

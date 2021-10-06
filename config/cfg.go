@@ -6,8 +6,9 @@ const (
 )
 
 var (
-	DefaultMargins  = Margins{float64ptr(2.835), float64ptr(2.835), float64ptr(2.835), float64ptr(2.835)}
-	DefaultPaddings = Margins{float64ptr(3), float64ptr(3), float64ptr(3), float64ptr(3)}
+	DefaultPageMargins = Margins{float64ptr(15), float64ptr(15), float64ptr(15), float64ptr(15)}
+	DefaultMargins     = Margins{float64ptr(2.835), float64ptr(2.835), float64ptr(2.835), float64ptr(2.835)}
+	DefaultPaddings    = Margins{float64ptr(3), float64ptr(3), float64ptr(3), float64ptr(3)}
 )
 
 type Orientation string
@@ -24,6 +25,7 @@ type Page struct {
 	Orientation Orientation `mapstructure:"orientation"`
 	Margins     Margins     `mapstructure:"margins"`
 	Paddings    Margins     `mapstructure:"paddings"`
+	PageMargins Margins     `mapstructure:"page_margins"`
 }
 
 type Margins struct {

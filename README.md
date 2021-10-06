@@ -25,11 +25,16 @@ page:
   cols: <number of columns>
   lines: <number of lines>
   orientation <landscape|portrait>
-  margins:
+  page_margins:
     top: <document top margin>
     bottom: <document bottom margin>
     left: <document left margin>
     right: <document right margin>
+  margins:
+    top: <top margin for each cell>
+    bottom: <bottom margin for each cell>
+    left: <left margin for each cell>
+    right: <right margin for each cell>
   paddings:
     top: <top padding for each cell>
     bottom: <bottom padding for each cell>

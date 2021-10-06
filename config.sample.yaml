@@ -2,6 +2,11 @@ page:
   cols: 3
   lines: 3
   orientation: landscape
+# page_margins:
+#   top: 15
+#   bottom: 15
+#   left: 15
+#   right: 15
 # margins:
 #   top: 5.67 / 2
 #   bottom: 5.67 / 2
