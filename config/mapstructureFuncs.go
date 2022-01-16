@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-	"github.com/Pramod-Devireddy/go-exprtk"
+	"github.com/Maldris/mathparse"
 	"github.com/mitchellh/mapstructure"
 	"reflect"
 	"strconv"
@@ -16,11 +16,23 @@ func MapstructureStringToFloat64Expr() mapstructure.DecodeHookFunc {
 		}
 
 		raw := data.(string)
-		exp := exprtk.NewExprtk()
-		exp.SetExpression(raw)
-		exp.CompileExpression()
-		return exp.GetEvaluatedValue(), nil
+		val, err := parseMathExpression(raw)
+		if err != nil {
+			return nil, err
+		}
+		return *val, err
 	}
+}
+
+func parseMathExpression(expr string) (*float64, error) {
+	p := mathparse.NewParser(expr)
+	p.Resolve()
+	if p.FoundResult() {
+		val := p.GetValueResult()
+		return &val, nil
+	}
+
+	return nil, fmt.Errorf("unable to parse expression %s", expr)
 }
 
 func MapstructureStringToColor() mapstructure.DecodeHookFunc {
