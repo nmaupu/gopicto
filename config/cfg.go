@@ -92,6 +92,7 @@ type Text struct {
 	Ratio            float64 `mapstructure:"ratio"`
 	Color            Color   `mapstructure:"color"`
 	FirstLetterColor Color   `mapstructure:"firstLetterColor"`
+	Top              bool    `mapstructure:"top"`
 }
 
 type Color struct {

@@ -22,6 +22,7 @@ text:
   ratio: 1/6
   color: steelblue
   firstLetterColor: tomato
+  top: true # Put the text at the top of the cell
 images:
   - image: sample/jap.jpg
     text: Geisha

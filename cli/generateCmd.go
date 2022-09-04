@@ -245,9 +245,18 @@ func printPdfCell(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize i
 		}
 	}
 
+	textWidth, _ := pdf.MeasureTextWidth(c.Text)
+	textHeight := gopdf.ContentObjCalTextHeight(fontSize)
+	textOffsetY := c.H - cellTextHeightPt/2 + textHeight/2
+	imageOffsetY := cfg.Page.Paddings.Top()
+	if cfg.Text.Top { // Drawing text on the top of the cell
+		textOffsetY = textHeight + cfg.Page.Paddings.Top()
+		imageOffsetY = cellTextHeightPt
+	}
+
 	var x, y float64
 	x = c.X + (c.W-w)/2
-	y = c.Y + cfg.Page.Paddings.Top()
+	y = c.Y + imageOffsetY
 
 	err := pdf.Image(c.Image, x, y, &gopdf.Rect{
 		W: w,
@@ -264,10 +273,8 @@ func printPdfCell(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize i
 
 	//pdf.RectFromUpperLeft(c.X, c.Y+c.H-cellTextHeightPt, c.W, cellTextHeightPt)
 
-	textWidth, _ := pdf.MeasureTextWidth(c.Text)
-	textHeight := gopdf.ContentObjCalTextHeight(fontSize)
 	pdf.SetX(c.X + c.W/2 - textWidth/2)
-	pdf.SetY(c.Y + c.H - cellTextHeightPt/2 + textHeight/2)
+	pdf.SetY(c.Y + textOffsetY)
 	pdf.SetTextColor(cfg.Text.FirstLetterColor.AsUints())
 	err = pdf.Text(string(c.Text[0]))
 	if err != nil {
