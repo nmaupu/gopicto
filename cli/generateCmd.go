@@ -246,12 +246,13 @@ func printPdfCell(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize i
 	}
 
 	textWidth, _ := pdf.MeasureTextWidth(c.Text)
+	// Depending on the font, this does not take into account "high/low" letters (e.g. f,g,y,t,l etc.)
 	textHeight := gopdf.ContentObjCalTextHeight(fontSize)
-	textOffsetY := c.H - cellTextHeightPt/2 + textHeight/2
+	textOffsetY := c.H - cellTextHeightPt/2 + textHeight/2 - cfg.Page.Paddings.Bottom()
 	imageOffsetY := cfg.Page.Paddings.Top()
 	if cfg.Text.Top { // Drawing text on the top of the cell
 		textOffsetY = textHeight + cfg.Page.Paddings.Top()
-		imageOffsetY = cellTextHeightPt
+		imageOffsetY = cellTextHeightPt + cfg.Page.Paddings.Top()
 	}
 
 	var x, y float64

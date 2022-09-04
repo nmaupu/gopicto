@@ -15,6 +15,11 @@ release:
 	GOOS=linux  GOARCH=amd64 go build -o $(BIN)/$(BIN_NAME)-$(TAG_NAME)-linux_x64    $(LDFLAGS)
 	GOOS=darwin GOARCH=amd64 go build -o $(BIN)/$(BIN_NAME)-$(TAG_NAME)-darwin_x64   $(LDFLAGS)
 	GOOS=darwin GOARCH=arm64 go build -o $(BIN)/$(BIN_NAME)-$(TAG_NAME)-darwin_arm64 $(LDFLAGS)
+	@echo
+	@echo Changelog:
+	$(eval from:=$(shell git tag | sort | tail -2 | head -1))
+	$(eval to:=$(shell git tag | sort | tail -1))
+	@git log --pretty="- %C(auto)%h %s" "$(from)..$(to)" | cat
 
 $(BIN):
 	mkdir -p $(BIN)
