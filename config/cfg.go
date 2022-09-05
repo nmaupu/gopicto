@@ -83,20 +83,32 @@ func (m Margins) TopBottom() float64 {
 }
 
 type ImageWord struct {
-	Image string `mapstructure:"image"`
-	Text  string `mapstructure:"text"`
+	Image      string        `mapstructure:"image"`
+	Text       string        `mapstructure:"text"`
+	TextColors map[int]Color `mapstructure:"textColors"`
 }
 
 type Text struct {
-	Font             string  `mapstructure:"font"`
-	Ratio            float64 `mapstructure:"ratio"`
-	Color            Color   `mapstructure:"color"`
-	FirstLetterColor Color   `mapstructure:"firstLetterColor"`
-	Top              bool    `mapstructure:"top"`
+	Font  string  `mapstructure:"font"`
+	Ratio float64 `mapstructure:"ratio"`
+	Color Color   `mapstructure:"color"`
+	// @Deprecated
+	FirstLetterColor Color `mapstructure:"firstLetterColor"`
+	Top              bool  `mapstructure:"top"`
 }
 
 type Color struct {
 	R, G, B uint8
+}
+
+func (c Color) IsBlack() bool {
+	return c.R == 0 && c.G == 0 && c.B == 0
+}
+
+func (c Color) Equals(col Color) bool {
+	return c.R == col.R &&
+		c.G == col.G &&
+		c.B == col.B
 }
 
 func (c Color) Red() uint8 {

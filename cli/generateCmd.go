@@ -2,10 +2,10 @@ package cli
 
 import (
 	"github.com/mitchellh/mapstructure"
+	"github.com/nmaupu/gopdf"
 	"github.com/nmaupu/gopicto/config"
 	"github.com/nmaupu/gopicto/draw"
 	"github.com/rs/zerolog/log"
-	"github.com/signintech/gopdf"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"image"
@@ -276,21 +276,25 @@ func printPdfCell(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize i
 
 	pdf.SetX(c.X + c.W/2 - textWidth/2)
 	pdf.SetY(c.Y + textOffsetY)
-	pdf.SetTextColor(cfg.Text.FirstLetterColor.AsUints())
-	err = pdf.Text(string(c.Text[0]))
-	if err != nil {
-		log.Error().Err(err).
-			Str("text", string(c.Text[0])).
-			Msg("Error adding text to PDF")
-	}
 	pdf.SetTextColor(cfg.Text.Color.AsUints())
-	err = pdf.Text(c.Text[1:])
-	if err != nil {
-		log.Error().Err(err).
-			Str("text", c.Text[1:]).
-			Msg("Error adding text to PDF")
-	}
+	for pos, char := range c.Text {
+		color, ok := c.ImageWord.TextColors[pos]
+		if !ok {
+			color = cfg.Text.Color
+		}
+		if pos == 0 && !cfg.Text.FirstLetterColor.IsBlack() { // override any config for first letter (retro compat)
+			log.Warn().Msg("firstLetterColor is deprecated, use textColors instead")
+			color = cfg.Text.FirstLetterColor
+		}
 
+		pdf.SetTextColor(color.AsUints())
+		err := pdf.Text(string(char))
+		if err != nil {
+			log.Error().Err(err).
+				Str("char", string(char)).
+				Msg("Error adding char to PDF")
+		}
+	}
 }
 
 func getImageDimension(imagePath string) (float64, float64, error) {

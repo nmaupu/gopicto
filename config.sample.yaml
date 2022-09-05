@@ -21,11 +21,17 @@ text:
   #font: /some/font.ttf
   ratio: 1/6
   color: steelblue
-  firstLetterColor: tomato
   top: true # Put the text at the top of the cell
 images:
   - image: sample/jap.jpg
     text: Geisha
+    textColors:
+      0: blue
+      1: cyan
+      2: black
+      3: black
+      4: black
+      5: purple
   - image: sample/crayons.jpg
     text: Crayons
   - image: sample/panorama.jpg

@@ -1,0 +1,49 @@
+page:
+  cols: 1
+  lines: 6
+  orientation: landscape
+# page_margins:
+#   top: 15
+#   bottom: 15
+#   left: 15
+#   right: 15
+# margins:
+#   top: 5.67 / 2
+#   bottom: 5.67 / 2
+#   left: 5.67 / 2
+#   right: 5.67 / 2
+# paddings:
+#   top: 2
+#   bottom: 2
+#   left: 2
+#   right: 2
+text:
+  #font: /some/font.ttf
+  ratio: 1/6
+  color: steelblue
+  top: true # Put the text at the top of the cell
+images:
+  - image: sample/jap.jpg
+    text: Geisha
+    textColors:
+      0: tomato
+  - image: sample/jap.jpg
+    text: Geisha
+    textColors:
+      1: tomato
+  - image: sample/jap.jpg
+    text: Geisha
+    textColors:
+      2: tomato
+  - image: sample/jap.jpg
+    text: Geisha
+    textColors:
+      3: tomato
+  - image: sample/jap.jpg
+    text: Geisha
+    textColors:
+      4: tomato
+  - image: sample/jap.jpg
+    text: Geisha
+    textColors:
+      5: tomato
