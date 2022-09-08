@@ -86,15 +86,25 @@ type ImageWord struct {
 	Image      string        `mapstructure:"image"`
 	Text       string        `mapstructure:"text"`
 	TextColors map[int]Color `mapstructure:"textColors"`
+	Def        struct {
+		Definition
+		Text       string        `mapstructure:"text"`
+		TextColors map[int]Color `mapstructure:"textColors"`
+	} `mapstructure:"def"`
 }
 
 type Text struct {
+	Font        string     `mapstructure:"font"`
+	Ratio       float64    `mapstructure:"ratio"`
+	Color       Color      `mapstructure:"color"`
+	Top         bool       `mapstructure:"top"`
+	Definitions Definition `mapstructure:"definitions"`
+}
+
+type Definition struct {
 	Font  string  `mapstructure:"font"`
-	Ratio float64 `mapstructure:"ratio"`
+	Size  float64 `mapstructure:"size"`
 	Color Color   `mapstructure:"color"`
-	// @Deprecated
-	FirstLetterColor Color `mapstructure:"firstLetterColor"`
-	Top              bool  `mapstructure:"top"`
 }
 
 type Color struct {

@@ -1,6 +1,6 @@
 page:
-  cols: 1
-  lines: 6
+  cols: 3
+  lines: 2
   orientation: landscape
 # page_margins:
 #   top: 15
@@ -18,32 +18,50 @@ page:
 #   left: 2
 #   right: 2
 text:
-  #font: /some/font.ttf
+  # font: /some/font.ttf
   ratio: 1/6
   color: steelblue
   top: true # Put the text at the top of the cell
+  definitions:
+    # font: /some/font
+    size: 12
+    color: tomato
 images:
   - image: sample/jap.jpg
-    text: Geisha
+    text: Geisha 1
     textColors:
       0: tomato
+    def:
+      text: I am a Geisha 1
+      textColors:
+        0: tomato
   - image: sample/jap.jpg
-    text: Geisha
+    text: Geisha 2
     textColors:
       1: tomato
+    def:
+      text: I am a Geisha 2
   - image: sample/jap.jpg
-    text: Geisha
+    text: Geisha 3
     textColors:
       2: tomato
+    def:
+      text: I am a Geisha 3
   - image: sample/jap.jpg
-    text: Geisha
+    text: Geisha 4
     textColors:
       3: tomato
+    def:
+      text: I am a Geisha 4
   - image: sample/jap.jpg
-    text: Geisha
+    text: Geisha 5
     textColors:
       4: tomato
+    def:
+      text: I am a Geisha 5
   - image: sample/jap.jpg
-    text: Geisha
+    text: Geisha 6
     textColors:
       5: tomato
+    def:
+      text: I am a Geisha 6

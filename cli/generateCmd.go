@@ -14,8 +14,14 @@ import (
 	"os"
 )
 
+type pageMode string
+type cellPrinter func(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize float64)
+
 const (
-	fontFamilyName = "myfont"
+	fontFamilyNameText        = "fontText"
+	fontFamilyNameDefinitions = "fontDefinitions"
+	pageModePictos            = "pictos"
+	pageModeDefinitions       = "definitions"
 )
 
 var (
@@ -151,7 +157,16 @@ func generateCmdFunc() {
 		PageSize: *pageSize,
 	})
 
-	err := pdf.AddTTFFont(fontFamilyName, cfg.Text.Font)
+	// Even page contains definitions ?
+	haveDefinitions := false
+	for _, iw := range cfg.ImageWords {
+		if iw.Def.Text != "" {
+			haveDefinitions = true
+			break
+		}
+	}
+
+	err := pdf.AddTTFFont(fontFamilyNameText, cfg.Text.Font)
 	if err != nil {
 		log.Fatal().
 			Err(err).
@@ -159,50 +174,48 @@ func generateCmdFunc() {
 			Msg("unable to use font")
 	}
 
-	cellW := (pageSize.W - cfg.Page.PageMargins.Left() - cfg.Page.PageMargins.Right()) / float64(cfg.Page.Cols)
-	cellH := (pageSize.H - cfg.Page.PageMargins.Top() - cfg.Page.PageMargins.Bottom()) / float64(cfg.Page.Lines)
-	page := 0
-	emptyPage := true
-
-	// Getting font size to set
-	longestText := ""
-	for _, iw := range cfg.ImageWords {
-		if len(iw.Text) > len(longestText) {
-			longestText = iw.Text
+	if haveDefinitions {
+		defFont := cfg.Text.Definitions.Font
+		if defFont == "" {
+			defFont = cfg.Text.Font
+		}
+		err := pdf.AddTTFFont(fontFamilyNameDefinitions, defFont)
+		if err != nil {
+			log.Fatal().
+				Err(err).
+				Str("font", cfg.Text.Definitions.Font).
+				Msg("unable to use font")
 		}
 	}
 
-	fontSize := setMaxFontSize(&pdf, longestText, cellW, cellH*cfg.Text.Ratio)
+	cellW := (pageSize.W - cfg.Page.PageMargins.Left() - cfg.Page.PageMargins.Right()) / float64(cfg.Page.Cols)
+	cellH := (pageSize.H - cfg.Page.PageMargins.Top() - cfg.Page.PageMargins.Bottom()) / float64(cfg.Page.Lines)
+	//emptyPage := true
 
-mainLoop:
-	for {
-		for l := 0; l < cfg.Page.Lines; l++ {
-			for c := 0; c < cfg.Page.Cols; c++ {
-				idx := page*cfg.Page.Cols*cfg.Page.Lines + cfg.Page.Cols*l + c
-				if idx >= len(cfg.ImageWords) { // no more images
-					break mainLoop
-				}
-
-				if emptyPage {
-					pdf.AddPage()
-					emptyPage = false
-				}
-
-				pc := draw.NewPictoCell(
-					cfg.Page.Margins,
-					cfg.Page.PageMargins.Left()+float64(c)*cellW,
-					cfg.Page.PageMargins.Top()+float64(l)*cellH,
-					cellW,
-					cellH,
-					cfg.ImageWords[idx],
-				)
-
-				printPdfCell(&pdf, cfg, pc, fontSize)
-			}
+	// Getting font size to set
+	longestText := ""
+	longestTextWidth := float64(0)
+	pdf.SetFont(fontFamilyNameText, "", 12)
+	for _, iw := range cfg.ImageWords {
+		textWidth, err := pdf.MeasureTextWidth(iw.Text)
+		if err != nil {
+			log.Error().Err(err).
+				Str("text", iw.Text).
+				Msg("unable to calculate text width")
 		}
+		if textWidth > longestTextWidth {
+			longestText = iw.Text
+			longestTextWidth = textWidth
+		}
+	}
 
-		emptyPage = true
-		page++
+	pictoTextFontSize := setMaxFontSize(&pdf, longestText, cellW, cellH*cfg.Text.Ratio)
+
+	page := 0
+	hasNextPage := true
+	for ; hasNextPage; page++ {
+		hasNextPage = printPdfPage(&pdf, cfg, page, cellW, cellH, pageModePictos, pictoTextFontSize)
+		_ = printPdfPage(&pdf, cfg, page, cellW, cellH, pageModeDefinitions, pictoTextFontSize)
 	}
 
 	output := viper.GetString(OutputFlag)
@@ -218,15 +231,62 @@ mainLoop:
 		Msg("PDF written successfully")
 }
 
-func printPdfCell(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize int) {
+// printPdfPage prints a page and returns true if a next page is needed or false if no more images/definitions follow
+func printPdfPage(pdf *gopdf.GoPdf, cfg config.PDF, page int, cellW float64, cellH float64, mode pageMode, fontSize float64) bool {
+	pdf.AddPage()
+	for l := 0; l < cfg.Page.Lines; l++ {
+		for c := 0; c < cfg.Page.Cols; c++ {
+			idx := page*cfg.Page.Cols*cfg.Page.Lines + cfg.Page.Cols*l + c
+			if idx >= len(cfg.ImageWords) { // no more images
+				return false
+			}
+
+			x := cfg.Page.PageMargins.Left() + float64(c)*cellW
+			y := cfg.Page.PageMargins.Top() + float64(l)*cellH
+			if mode == pageModeDefinitions {
+				x = cfg.Page.PageMargins.Left() + (float64(cfg.Page.Cols)-float64(c)-1)*cellW
+			}
+
+			pc := draw.NewPictoCell(
+				cfg.Page.Margins,
+				x,
+				y,
+				cellW,
+				cellH,
+				cfg.ImageWords[idx],
+			)
+
+			printPdfCell(pdf, cfg, pc, fontSize, mode)
+		}
+	}
+
+	return true
+}
+
+func printPdfCell(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize float64, mode pageMode) {
 	pdf.SetLineWidth(1)
 	pdf.RectFromUpperLeft(c.X, c.Y, c.W, c.H)
+
+	var cellPrinterFunc cellPrinter
+	switch mode {
+	case pageModePictos:
+		cellPrinterFunc = printCellPicto
+	case pageModeDefinitions:
+		cellPrinterFunc = printCellDefinition
+	}
+	cellPrinterFunc(pdf, cfg, c, fontSize)
+
+}
+
+func printCellPicto(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize float64) {
+	pdf.SetFont(fontFamilyNameText, "", fontSize)
+	pdf.SetFontSize(fontSize)
 
 	cellTextHeightPt := c.H * cfg.Text.Ratio
 	imgW, imgH, _ := getImageDimension(c.Image)
 	var w, h float64
 	if c.W >= c.H {
-		// Image should fill the height of the cell except if larger than high
+		// Image should fill the height of the cell except if larger than height
 		h = c.H - cellTextHeightPt - cfg.Page.Paddings.TopBottom()
 		w = imgW * h / imgH
 
@@ -247,7 +307,7 @@ func printPdfCell(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize i
 
 	textWidth, _ := pdf.MeasureTextWidth(c.Text)
 	// Depending on the font, this does not take into account "high/low" letters (e.g. f,g,y,t,l etc.)
-	textHeight := gopdf.ContentObjCalTextHeight(fontSize)
+	textHeight := gopdf.ContentObjCalTextHeightPrecise(fontSize)
 	textOffsetY := c.H - cellTextHeightPt/2 + textHeight/2 - cfg.Page.Paddings.Bottom()
 	imageOffsetY := cfg.Page.Paddings.Top()
 	if cfg.Text.Top { // Drawing text on the top of the cell
@@ -282,10 +342,6 @@ func printPdfCell(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize i
 		if !ok {
 			color = cfg.Text.Color
 		}
-		if pos == 0 && !cfg.Text.FirstLetterColor.IsBlack() { // override any config for first letter (retro compat)
-			log.Warn().Msg("firstLetterColor is deprecated, use textColors instead")
-			color = cfg.Text.FirstLetterColor
-		}
 
 		pdf.SetTextColor(color.AsUints())
 		err := pdf.Text(string(char))
@@ -295,6 +351,25 @@ func printPdfCell(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize i
 				Msg("Error adding char to PDF")
 		}
 	}
+}
+
+func printCellDefinition(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize float64) {
+	fontSize = cfg.Text.Definitions.Size
+	if c.Def.Size > 0 {
+		fontSize = c.Def.Size
+	}
+
+	pdf.SetFont(fontFamilyNameText, "", fontSize)
+	pdf.SetFontSize(fontSize)
+
+	textWidth, _ := pdf.MeasureTextWidth(c.Def.Text)
+	textHeight := gopdf.ContentObjCalTextHeightPrecise(fontSize)
+
+	pdf.SetX(c.X + c.W/2 - textWidth/2)
+	pdf.SetY(c.Y + textHeight + c.H/2)
+
+	pdf.Text(c.Def.Text)
+	return
 }
 
 func getImageDimension(imagePath string) (float64, float64, error) {
@@ -338,7 +413,7 @@ func printCutLines(pdf *gopdf.GoPdf, cfg config.PDF, incX, incY float64) {
 	}
 }
 
-func setMaxFontSize(pdf *gopdf.GoPdf, text string, maxWidth, maxHeight float64) int {
+func setMaxFontSize(pdf *gopdf.GoPdf, text string, maxWidth, maxHeight float64) float64 {
 	fontSize := 110
 	inc := -1
 	for {
@@ -348,10 +423,11 @@ func setMaxFontSize(pdf *gopdf.GoPdf, text string, maxWidth, maxHeight float64) 
 			break // no size found
 		}
 
-		err := pdf.SetFont(fontFamilyName, "", fontSize)
+		err := pdf.SetFont(fontFamilyNameText, "", fontSize)
 		if err != nil {
 			log.Fatal().Err(err).Msg("Unable to enable font")
 		}
+		pdf.SetFontSize(float64(fontSize))
 
 		textWidth, _ := pdf.MeasureTextWidth(text)
 		textHeight := gopdf.ContentObjCalTextHeight(fontSize)
@@ -361,7 +437,7 @@ func setMaxFontSize(pdf *gopdf.GoPdf, text string, maxWidth, maxHeight float64) 
 			// Taking 50% size because why not 🤷‍
 			newFontSize := float64(fontSize) * 0.5
 			fontSize = int(newFontSize)
-			err := pdf.SetFont(fontFamilyName, "", fontSize)
+			err := pdf.SetFont(fontFamilyNameText, "", fontSize)
 			if err != nil {
 				log.Fatal().Msg("unable to enable font")
 			}
@@ -373,5 +449,5 @@ func setMaxFontSize(pdf *gopdf.GoPdf, text string, maxWidth, maxHeight float64) 
 		}
 	}
 
-	return fontSize
+	return float64(fontSize)
 }
