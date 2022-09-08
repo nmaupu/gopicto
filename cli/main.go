@@ -12,8 +12,9 @@ var (
 const (
 	AppName = "gopicto"
 
-	ConfigFlag = "config"
-	OutputFlag = "output"
+	ConfigFlag   = "config"
+	OutputFlag   = "output"
+	CutLinesFlag = "cutLines"
 )
 
 var rootCmd = &cobra.Command{

@@ -13,6 +13,8 @@ var (
 
 type Orientation string
 
+type TextColors map[int]Color
+
 type PDF struct {
 	Page       Page        `mapstructure:"page"`
 	Text       Text        `mapstructure:"text"`
@@ -20,6 +22,10 @@ type PDF struct {
 }
 
 type Page struct {
+	TwoSidedOffsetMM struct {
+		X float64 `mapstructure:"x"`
+		Y float64 `mapstructure:"y"`
+	} `mapstructure:"twoSidedOffsetMM"`
 	Cols        int         `mapstructure:"cols"`
 	Lines       int         `mapstructure:"lines"`
 	Orientation Orientation `mapstructure:"orientation"`
@@ -83,13 +89,13 @@ func (m Margins) TopBottom() float64 {
 }
 
 type ImageWord struct {
-	Image      string        `mapstructure:"image"`
-	Text       string        `mapstructure:"text"`
-	TextColors map[int]Color `mapstructure:"textColors"`
+	Image      string     `mapstructure:"image"`
+	Text       string     `mapstructure:"text"`
+	TextColors TextColors `mapstructure:"textColors"`
 	Def        struct {
-		Definition
-		Text       string        `mapstructure:"text"`
-		TextColors map[int]Color `mapstructure:"textColors"`
+		Definition `mapstructure:",squash"`
+		Text       string     `mapstructure:"text"`
+		TextColors TextColors `mapstructure:"textColors"`
 	} `mapstructure:"def"`
 }
 

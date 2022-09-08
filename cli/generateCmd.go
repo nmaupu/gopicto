@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"math"
 	"os"
+	"path"
 )
 
 type pageMode string
@@ -41,14 +42,16 @@ var (
 	defaultConfigFile = "./config.yaml"
 	defaultOutputFile = "/tmp/gopicto.pdf"
 
-	cfgFile string
-	outFile string
+	cfgFile  string
+	outFile  string
+	cutLines bool
 )
 
 func init() {
 	rootCmd.AddCommand(generateCmd)
 	generateCmd.Flags().StringVarP(&cfgFile, ConfigFlag, "c", defaultConfigFile, "Config file to use")
 	generateCmd.Flags().StringVarP(&outFile, OutputFlag, "o", defaultOutputFile, "Specify the name of the file generated")
+	generateCmd.Flags().BoolVarP(&cutLines, CutLinesFlag, "k", false, "Draw cut lines around cells")
 }
 
 func initConfig() {
@@ -94,6 +97,10 @@ func initConfig() {
 	cfg.Page.PageMargins.InitWithDefaults(config.DefaultPageMargins)
 	cfg.Page.Margins.InitWithDefaults(config.DefaultMargins)
 	cfg.Page.Paddings.InitWithDefaults(config.DefaultPaddings)
+
+	if cfg.Page.TwoSidedOffsetMM.X == 0 {
+		cfg.Page.TwoSidedOffsetMM.X = -3
+	}
 
 	if cfg.Text.Ratio == 0.0 {
 		cfg.Text.Ratio = 1 / 5
@@ -155,6 +162,7 @@ func generateCmdFunc() {
 	// Unit is pt as gopdf's unit support seems to be broken
 	pdf.Start(gopdf.Config{
 		PageSize: *pageSize,
+		//Unit:     gopdf.UnitMM,
 	})
 
 	// Even page contains definitions ?
@@ -190,32 +198,27 @@ func generateCmdFunc() {
 
 	cellW := (pageSize.W - cfg.Page.PageMargins.Left() - cfg.Page.PageMargins.Right()) / float64(cfg.Page.Cols)
 	cellH := (pageSize.H - cfg.Page.PageMargins.Top() - cfg.Page.PageMargins.Bottom()) / float64(cfg.Page.Lines)
-	//emptyPage := true
 
 	// Getting font size to set
 	longestText := ""
-	longestTextWidth := float64(0)
-	pdf.SetFont(fontFamilyNameText, "", 12)
 	for _, iw := range cfg.ImageWords {
-		textWidth, err := pdf.MeasureTextWidth(iw.Text)
-		if err != nil {
-			log.Error().Err(err).
-				Str("text", iw.Text).
-				Msg("unable to calculate text width")
-		}
-		if textWidth > longestTextWidth {
+		if len(longestText) < len(iw.Text) {
 			longestText = iw.Text
-			longestTextWidth = textWidth
 		}
 	}
 
 	pictoTextFontSize := setMaxFontSize(&pdf, longestText, cellW, cellH*cfg.Text.Ratio)
 
-	page := 0
-	hasNextPage := true
-	for ; hasNextPage; page++ {
-		hasNextPage = printPdfPage(&pdf, cfg, page, cellW, cellH, pageModePictos, pictoTextFontSize)
-		_ = printPdfPage(&pdf, cfg, page, cellW, cellH, pageModeDefinitions, pictoTextFontSize)
+	nbPictoPages := len(cfg.ImageWords) / (cfg.Page.Cols * cfg.Page.Lines)
+	if len(cfg.ImageWords) < cfg.Page.Cols*cfg.Page.Lines {
+		nbPictoPages = 1
+	}
+	for page := 0; page < nbPictoPages; page++ {
+		printPdfPage(&pdf, cfg, page, cellW, cellH, pageModePictos, pictoTextFontSize)
+		if haveDefinitions {
+			printPdfPage(&pdf, cfg, page, cellW, cellH, pageModeDefinitions, pictoTextFontSize)
+		}
+
 	}
 
 	output := viper.GetString(OutputFlag)
@@ -231,18 +234,31 @@ func generateCmdFunc() {
 		Msg("PDF written successfully")
 }
 
-// printPdfPage prints a page and returns true if a next page is needed or false if no more images/definitions follow
-func printPdfPage(pdf *gopdf.GoPdf, cfg config.PDF, page int, cellW float64, cellH float64, mode pageMode, fontSize float64) bool {
+// printPdfPage prints a page
+func printPdfPage(pdf *gopdf.GoPdf, cfg config.PDF, page int, cellW float64, cellH float64, mode pageMode, fontSize float64) {
 	pdf.AddPage()
+
+	// Printer are misaligned when printing two-sided, adding an offset on odd pages to compensate
+	offsetX := float64(0)
+	offsetY := float64(0)
+	if mode == pageModePictos {
+		offsetX = gopdf.UnitsToPoints(gopdf.UnitMM, cfg.Page.TwoSidedOffsetMM.X)
+		offsetY = gopdf.UnitsToPoints(gopdf.UnitMM, cfg.Page.TwoSidedOffsetMM.Y)
+	}
+
+	if cutLines {
+		printCutLines(pdf, cfg, offsetX, offsetY)
+	}
+
 	for l := 0; l < cfg.Page.Lines; l++ {
 		for c := 0; c < cfg.Page.Cols; c++ {
 			idx := page*cfg.Page.Cols*cfg.Page.Lines + cfg.Page.Cols*l + c
 			if idx >= len(cfg.ImageWords) { // no more images
-				return false
+				return
 			}
 
-			x := cfg.Page.PageMargins.Left() + float64(c)*cellW
-			y := cfg.Page.PageMargins.Top() + float64(l)*cellH
+			x := cfg.Page.PageMargins.Left() + float64(c)*cellW + offsetX
+			y := cfg.Page.PageMargins.Top() + float64(l)*cellH + offsetY
 			if mode == pageModeDefinitions {
 				x = cfg.Page.PageMargins.Left() + (float64(cfg.Page.Cols)-float64(c)-1)*cellW
 			}
@@ -259,12 +275,11 @@ func printPdfPage(pdf *gopdf.GoPdf, cfg config.PDF, page int, cellW float64, cel
 			printPdfCell(pdf, cfg, pc, fontSize, mode)
 		}
 	}
-
-	return true
 }
 
 func printPdfCell(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize float64, mode pageMode) {
 	pdf.SetLineWidth(1)
+	pdf.SetLineType("")
 	pdf.RectFromUpperLeft(c.X, c.Y, c.W, c.H)
 
 	var cellPrinterFunc cellPrinter
@@ -278,6 +293,7 @@ func printPdfCell(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize f
 
 }
 
+// printCellPicto prints a cell with a picto and a text on top or bottom
 func printCellPicto(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize float64) {
 	pdf.SetFont(fontFamilyNameText, "", fontSize)
 	pdf.SetFontSize(fontSize)
@@ -334,13 +350,58 @@ func printCellPicto(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize
 
 	//pdf.RectFromUpperLeft(c.X, c.Y+c.H-cellTextHeightPt, c.W, cellTextHeightPt)
 
-	pdf.SetX(c.X + c.W/2 - textWidth/2)
-	pdf.SetY(c.Y + textOffsetY)
-	pdf.SetTextColor(cfg.Text.Color.AsUints())
-	for pos, char := range c.Text {
-		color, ok := c.ImageWord.TextColors[pos]
+	printTextWithColors(pdf,
+		c.X+c.W/2-textWidth/2,
+		c.Y+textOffsetY,
+		cfg,
+		c.Text,
+		c.ImageWord.TextColors,
+		cfg.Text.Color,
+	)
+}
+
+// printCellDefinition prints a cell with a definition centered
+func printCellDefinition(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize float64) {
+	newFontSize := cfg.Text.Definitions.Size
+	if c.Def.Size > 0 {
+		newFontSize = c.Def.Size
+	}
+	if newFontSize == 0 {
+		newFontSize = fontSize
+	}
+
+	if c.Def.Font != "" {
+		pdf.AddTTFFont(path.Base(c.Def.Font), c.Def.Font)
+		pdf.SetFont(path.Base(c.Def.Font), "", newFontSize)
+		pdf.SetFontSize(newFontSize)
+	} else {
+		pdf.SetFont(fontFamilyNameDefinitions, "", newFontSize)
+		pdf.SetFontSize(newFontSize)
+	}
+
+	textWidth, _ := pdf.MeasureTextWidth(c.Def.Text)
+	textHeight := gopdf.ContentObjCalTextHeightPrecise(newFontSize)
+	defaultColor := cfg.Text.Color
+	if !c.Def.Color.IsBlack() {
+		defaultColor = c.Def.Color
+	}
+	printTextWithColors(pdf,
+		c.X+c.W/2-textWidth/2,
+		c.Y+textHeight/2+c.H/2,
+		cfg,
+		c.Def.Text,
+		c.Def.TextColors,
+		defaultColor,
+	)
+}
+
+func printTextWithColors(pdf *gopdf.GoPdf, x, y float64, cfg config.PDF, text string, colors config.TextColors, defaultColor config.Color) {
+	pdf.SetX(x)
+	pdf.SetY(y)
+	for pos, char := range text {
+		color, ok := colors[pos]
 		if !ok {
-			color = cfg.Text.Color
+			color = defaultColor
 		}
 
 		pdf.SetTextColor(color.AsUints())
@@ -351,25 +412,6 @@ func printCellPicto(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize
 				Msg("Error adding char to PDF")
 		}
 	}
-}
-
-func printCellDefinition(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize float64) {
-	fontSize = cfg.Text.Definitions.Size
-	if c.Def.Size > 0 {
-		fontSize = c.Def.Size
-	}
-
-	pdf.SetFont(fontFamilyNameText, "", fontSize)
-	pdf.SetFontSize(fontSize)
-
-	textWidth, _ := pdf.MeasureTextWidth(c.Def.Text)
-	textHeight := gopdf.ContentObjCalTextHeightPrecise(fontSize)
-
-	pdf.SetX(c.X + c.W/2 - textWidth/2)
-	pdf.SetY(c.Y + textHeight + c.H/2)
-
-	pdf.Text(c.Def.Text)
-	return
 }
 
 func getImageDimension(imagePath string) (float64, float64, error) {
@@ -392,24 +434,26 @@ func getImageDimension(imagePath string) (float64, float64, error) {
 	return float64(img.Width), float64(img.Height), nil
 }
 
-func printCutLines(pdf *gopdf.GoPdf, cfg config.PDF, incX, incY float64) {
+// printCutLines prints cut lines with an offset on the left (to be able to align two-sided prints horizontally)
+func printCutLines(pdf *gopdf.GoPdf, cfg config.PDF, offsetX, offsetY float64) {
 	var x float64
 
+	pdf.SetLineWidth(1)
+	pdf.SetLineType("dotted")
+
+	width := (pageSize.W - cfg.Page.PageMargins.LeftRight()) / float64(cfg.Page.Cols)
+	height := (pageSize.H - cfg.Page.PageMargins.TopBottom()) / float64(cfg.Page.Lines)
+
 	for i := 1; i < cfg.Page.Cols; i++ {
-		x = float64(i) * incX
-		pdf.SetLineWidth(1)
-		pdf.SetLineType("dotted")
+		x = cfg.Page.PageMargins.Left() + float64(i)*width + offsetX
 		pdf.Line(x, 0, x, pageSize.H)
-		x += incX
+		x += width
 	}
 
-	var y float64
-	for y < pageSize.H {
-		y += incY
-		pdf.SetLineWidth(1)
-		pdf.SetLineType("dotted")
+	for i := 1; i < cfg.Page.Lines; i++ {
+		y := cfg.Page.PageMargins.Top() + float64(i)*height + offsetY
 		pdf.Line(0, y, pageSize.W, y)
-		y += incY
+		y += height
 	}
 }
 

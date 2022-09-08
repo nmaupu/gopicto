@@ -1,4 +1,7 @@
 page:
+  twoSidedOffsetMM:
+    x: -3
+    y: 0
   cols: 3
   lines: 3
   orientation: landscape
@@ -40,6 +43,8 @@ images:
     text: Accident
   - image: sample/corrosif.jpg
     text: Corrosif
+    def:
+      text: Ceci est corrosif
   - image: sample/test2.jpg
     text: test 2
   - image: sample/interdit.png

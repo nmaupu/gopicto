@@ -1,22 +1,25 @@
 page:
+  twoSidedOffsetMM:
+    x: -3
+    y: 0
   cols: 3
-  lines: 2
+  lines: 3
   orientation: landscape
-# page_margins:
-#   top: 15
-#   bottom: 15
-#   left: 15
-#   right: 15
-# margins:
-#   top: 5.67 / 2
-#   bottom: 5.67 / 2
-#   left: 5.67 / 2
-#   right: 5.67 / 2
-# paddings:
-#   top: 2
-#   bottom: 2
-#   left: 2
-#   right: 2
+  page_margins:
+    top: 45
+    bottom: 45
+    left: 45
+    right: 45
+#  margins:
+#    top: 10
+#    bottom: 10
+#    left: 30
+#    right: 30
+#  paddings:
+#    top: 2
+#    bottom: 2
+#    left: 2
+#    right: 2
 text:
   # font: /some/font.ttf
   ratio: 1/6
@@ -24,7 +27,7 @@ text:
   top: true # Put the text at the top of the cell
   definitions:
     # font: /some/font
-    size: 12
+    size: 28
     color: tomato
 images:
   - image: sample/jap.jpg
@@ -33,8 +36,12 @@ images:
       0: tomato
     def:
       text: I am a Geisha 1
+      font: config/OleoScript-Regular.ttf
+      size: 12
+      color: green
       textColors:
         0: tomato
+        14: tomato
   - image: sample/jap.jpg
     text: Geisha 2
     textColors:
@@ -47,6 +54,12 @@ images:
       2: tomato
     def:
       text: I am a Geisha 3
+      font: config/Combo-Regular.ttf
+      size: 19
+      color: blue
+      textColors:
+        5: yellow
+        8: green
   - image: sample/jap.jpg
     text: Geisha 4
     textColors:
@@ -59,6 +72,7 @@ images:
       4: tomato
     def:
       text: I am a Geisha 5
+      font: /home/nmaupu/downloads/Combo-Regular.ttf
   - image: sample/jap.jpg
     text: Geisha 6
     textColors:
