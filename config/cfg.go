@@ -108,6 +108,7 @@ type Text struct {
 }
 
 type Definition struct {
+	Borders          bool    `mapstructure:"borders"`
 	Font             string  `mapstructure:"font"`
 	Size             float64 `mapstructure:"size"`
 	Color            Color   `mapstructure:"color"`

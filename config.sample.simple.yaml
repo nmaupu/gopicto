@@ -29,6 +29,7 @@ text:
     # font: /some/font
     size: 28
     color: tomato
+    borders: true
 images:
   - image: sample/jap.jpg
     text: Geisha 1
@@ -38,7 +39,7 @@ images:
       text: Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.
       font: config/OleoScript-Regular.ttf
       size: 10
-      # lineSpacingRatio: .3
+      lineSpacingRatio: .3
       color: green
       textColors:
         0: tomato
@@ -50,38 +51,11 @@ images:
         243: tomato
   - image: sample/jap.jpg
     text: Geisha 2
-    textColors:
-      1: tomato
-    def:
-      text: I am a Geisha 2
   - image: sample/jap.jpg
     text: Geisha 3
-    textColors:
-      2: tomato
-    def:
-      text: I am a Geisha 3
-      font: config/Combo-Regular.ttf
-      size: 19
-      color: blue
-      textColors:
-        5: yellow
-        8: green
   - image: sample/jap.jpg
     text: Geisha 4
-    textColors:
-      3: tomato
-    def:
-      text: I am a Geisha 4
   - image: sample/jap.jpg
     text: Geisha 5
-    textColors:
-      4: tomato
-    def:
-      text: I am a Geisha 5
-      font: /home/nmaupu/downloads/Combo-Regular.ttf
   - image: sample/jap.jpg
     text: Geisha 6
-    textColors:
-      5: tomato
-    def:
-      text: I am a Geisha 6

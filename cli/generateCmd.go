@@ -14,6 +14,7 @@ import (
 	"math"
 	"os"
 	"path"
+	"strings"
 )
 
 type pageMode string
@@ -296,7 +297,9 @@ func printPdfPage(pdf *gopdf.GoPdf, cfg config.PDF, page int, cellW float64, cel
 func printPdfCell(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize float64, mode pageMode) {
 	pdf.SetLineWidth(1)
 	pdf.SetLineType("")
-	pdf.RectFromUpperLeft(c.X, c.Y, c.W, c.H)
+	if mode == pageModePictos || (mode == pageModeDefinitions && (cfg.Text.Definitions.Borders || c.Def.Borders)) {
+		pdf.RectFromUpperLeft(c.X, c.Y, c.W, c.H)
+	}
 
 	var cellPrinterFunc cellPrinter
 	switch mode {
@@ -357,11 +360,6 @@ func printCellPicto(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize
 		log.Error().Err(err).Msg("problem creating pdf image")
 	}
 
-	// Handling text
-	if len(c.Text) == 0 {
-		return
-	}
-
 	//pdf.RectFromUpperLeft(c.X, c.Y+c.H-cellTextHeightPt, c.W, cellTextHeightPt)
 
 	printTextWithColors(pdf,
@@ -374,8 +372,12 @@ func printCellPicto(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize
 	)
 }
 
-// printCellDefinition prints a cell with a text/definition centered wrapped
+// printCellDefinition prints a cell with a text/definition wrapped and centered
 func printCellDefinition(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize float64) {
+	if strings.Trim(c.Def.Text, " ") == "" {
+		return
+	}
+
 	newFontSize := cfg.Text.Definitions.Size
 	if c.Def.Size > 0 {
 		newFontSize = c.Def.Size
@@ -402,7 +404,7 @@ func printCellDefinition(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fon
 		if err != nil {
 			log.Error().Err(err).
 				Str("line", c.Def.Text).
-				Msg("unable word wrap text")
+				Msg("unable to word wrap text")
 		}
 	}
 
@@ -429,6 +431,10 @@ func printCellDefinition(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fon
 // So the whole text will be written so that y is in its center.
 // If there is one line, y is used as is
 func printTextWithColors(pdf *gopdf.GoPdf, x, y float64, fontSize float64, textLines []string, lineSpacingRatio float64, colors config.TextColors, defaultColor config.Color) {
+	if len(textLines) == 0 {
+		return
+	}
+
 	pdf.SetFontSize(fontSize)
 
 	extraSpaceBetweenLines := fontSize * lineSpacingRatio
