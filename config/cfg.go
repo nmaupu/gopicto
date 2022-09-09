@@ -108,9 +108,10 @@ type Text struct {
 }
 
 type Definition struct {
-	Font  string  `mapstructure:"font"`
-	Size  float64 `mapstructure:"size"`
-	Color Color   `mapstructure:"color"`
+	Font             string  `mapstructure:"font"`
+	Size             float64 `mapstructure:"size"`
+	Color            Color   `mapstructure:"color"`
+	LineSpacingRatio float64 `mapstructure:"lineSpacingRatio"`
 }
 
 type Color struct {

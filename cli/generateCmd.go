@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"github.com/mitchellh/mapstructure"
 	"github.com/nmaupu/gopdf"
 	"github.com/nmaupu/gopicto/config"
@@ -23,6 +24,10 @@ const (
 	fontFamilyNameDefinitions = "fontDefinitions"
 	pageModePictos            = "pictos"
 	pageModeDefinitions       = "definitions"
+	defaultLineSpacingRatio   = .3
+	defaultImageWordTextRatio = 1 / 5
+	defaultTwoSidedOffsetMMx  = -3
+	defaultTwoSidedOffsetMMy  = 0
 )
 
 var (
@@ -99,11 +104,22 @@ func initConfig() {
 	cfg.Page.Paddings.InitWithDefaults(config.DefaultPaddings)
 
 	if cfg.Page.TwoSidedOffsetMM.X == 0 {
-		cfg.Page.TwoSidedOffsetMM.X = -3
+		cfg.Page.TwoSidedOffsetMM.X = defaultTwoSidedOffsetMMx
+	}
+
+	if cfg.Page.TwoSidedOffsetMM.Y == 0 {
+		cfg.Page.TwoSidedOffsetMM.Y = defaultTwoSidedOffsetMMy
 	}
 
 	if cfg.Text.Ratio == 0.0 {
-		cfg.Text.Ratio = 1 / 5
+		cfg.Text.Ratio = defaultImageWordTextRatio
+	}
+
+	for k, iw := range cfg.ImageWords {
+		if iw.Def.LineSpacingRatio == 0 {
+			// Can't use iw here because it's a copy of the original object
+			cfg.ImageWords[k].Def.LineSpacingRatio = defaultLineSpacingRatio
+		}
 	}
 
 	if cfg.Text.Font == "" {
@@ -296,7 +312,6 @@ func printPdfCell(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize f
 // printCellPicto prints a cell with a picto and a text on top or bottom
 func printCellPicto(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize float64) {
 	pdf.SetFont(fontFamilyNameText, "", fontSize)
-	pdf.SetFontSize(fontSize)
 
 	cellTextHeightPt := c.H * cfg.Text.Ratio
 	imgW, imgH, _ := getImageDimension(c.Image)
@@ -321,7 +336,6 @@ func printCellPicto(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize
 		}
 	}
 
-	textWidth, _ := pdf.MeasureTextWidth(c.Text)
 	// Depending on the font, this does not take into account "high/low" letters (e.g. f,g,y,t,l etc.)
 	textHeight := gopdf.ContentObjCalTextHeightPrecise(fontSize)
 	textOffsetY := c.H - cellTextHeightPt/2 + textHeight/2 - cfg.Page.Paddings.Bottom()
@@ -351,16 +365,16 @@ func printCellPicto(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize
 	//pdf.RectFromUpperLeft(c.X, c.Y+c.H-cellTextHeightPt, c.W, cellTextHeightPt)
 
 	printTextWithColors(pdf,
-		c.X+c.W/2-textWidth/2,
+		c.X+c.W/2,
 		c.Y+textOffsetY,
-		cfg,
-		c.Text,
-		c.ImageWord.TextColors,
-		cfg.Text.Color,
+		fontSize,
+		[]string{c.Text},
+		0,
+		c.ImageWord.TextColors, cfg.Text.Color,
 	)
 }
 
-// printCellDefinition prints a cell with a definition centered
+// printCellDefinition prints a cell with a text/definition centered wrapped
 func printCellDefinition(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize float64) {
 	newFontSize := cfg.Text.Definitions.Size
 	if c.Def.Size > 0 {
@@ -373,43 +387,86 @@ func printCellDefinition(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fon
 	if c.Def.Font != "" {
 		pdf.AddTTFFont(path.Base(c.Def.Font), c.Def.Font)
 		pdf.SetFont(path.Base(c.Def.Font), "", newFontSize)
-		pdf.SetFontSize(newFontSize)
 	} else {
 		pdf.SetFont(fontFamilyNameDefinitions, "", newFontSize)
-		pdf.SetFontSize(newFontSize)
 	}
 
-	textWidth, _ := pdf.MeasureTextWidth(c.Def.Text)
-	textHeight := gopdf.ContentObjCalTextHeightPrecise(newFontSize)
+	//textHeight := gopdf.ContentObjCalTextHeightPrecise(newFontSize)
 	defaultColor := cfg.Text.Color
 	if !c.Def.Color.IsBlack() {
 		defaultColor = c.Def.Color
 	}
+
+	lines, err := pdf.SplitTextWithWordWrap(c.Def.Text, c.W-cfg.Page.Paddings.LeftRight())
+	if err != nil {
+		if err != nil {
+			log.Error().Err(err).
+				Str("line", c.Def.Text).
+				Msg("unable word wrap text")
+		}
+	}
+
+	if c.Def.LineSpacingRatio == 0 && len(lines) > 1 {
+		log.Warn().
+			Str("text", fmt.Sprintf("%.30s...", c.Def.Text)).
+			Msg("lineSpacingRatio is zero")
+	}
+
 	printTextWithColors(pdf,
-		c.X+c.W/2-textWidth/2,
-		c.Y+textHeight/2+c.H/2,
-		cfg,
-		c.Def.Text,
+		c.X+c.W/2,
+		c.Y+c.H/2,
+		newFontSize,
+		lines,
+		c.Def.LineSpacingRatio,
 		c.Def.TextColors,
 		defaultColor,
 	)
 }
 
-func printTextWithColors(pdf *gopdf.GoPdf, x, y float64, cfg config.PDF, text string, colors config.TextColors, defaultColor config.Color) {
-	pdf.SetX(x)
-	pdf.SetY(y)
-	for pos, char := range text {
-		color, ok := colors[pos]
-		if !ok {
-			color = defaultColor
-		}
+// printTextWithColors prints lines of text that have been wrapped beforehand
+// x should be in the center of the cell so text is centered, the true x will be calculated taken into account the real width of each line
+// y is the y coordinate of the **center of the text block**. Each lines will be spaced depending on line height and the given font size
+// So the whole text will be written so that y is in its center.
+// If there is one line, y is used as is
+func printTextWithColors(pdf *gopdf.GoPdf, x, y float64, fontSize float64, textLines []string, lineSpacingRatio float64, colors config.TextColors, defaultColor config.Color) {
+	pdf.SetFontSize(fontSize)
 
-		pdf.SetTextColor(color.AsUints())
-		err := pdf.Text(string(char))
+	extraSpaceBetweenLines := fontSize * lineSpacingRatio
+	textHeight := gopdf.ContentObjCalTextHeightPrecise(fontSize) + extraSpaceBetweenLines*2
+	if len(textLines) > 1 {
+		// printing lines from the bottom left, so we need to actually subtract 1 line which will be printed above cursor
+		y -= (float64(len(textLines)-1) * textHeight) / 2
+	}
+
+	charPos := 0
+	for j, line := range textLines {
+		// Wrapping text removes spaces from original text
+		if j > 0 {
+			charPos++
+		}
+		textWidth, err := pdf.MeasureTextWidth(line)
 		if err != nil {
 			log.Error().Err(err).
-				Str("char", string(char)).
-				Msg("Error adding char to PDF")
+				Str("line", line).
+				Msg("unable to calculate text width")
+		}
+		pdf.SetX(x - textWidth/2)
+		pdf.SetY(y + float64(j)*textHeight)
+		for _, char := range line {
+			color, ok := colors[charPos]
+			if !ok {
+				color = defaultColor
+			}
+
+			pdf.SetTextColor(color.AsUints())
+			err = pdf.Text(string(char))
+			if err != nil {
+				log.Error().Err(err).
+					Str("char", string(char)).
+					Msg("Error adding char to PDF")
+			}
+
+			charPos++
 		}
 	}
 }

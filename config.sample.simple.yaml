@@ -35,13 +35,19 @@ images:
     textColors:
       0: tomato
     def:
-      text: I am a Geisha 1
+      text: Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.
       font: config/OleoScript-Regular.ttf
-      size: 12
+      size: 10
+      # lineSpacingRatio: .3
       color: green
       textColors:
         0: tomato
-        14: tomato
+        15: tomato
+        146: tomato
+        147: tomato
+        148: tomato
+        149: tomato
+        243: tomato
   - image: sample/jap.jpg
     text: Geisha 2
     textColors:
