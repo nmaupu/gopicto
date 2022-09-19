@@ -1,5 +1,7 @@
 package config
 
+import "math"
+
 const (
 	Portrait  = Orientation("portrait")
 	Landscape = Orientation("landscape")
@@ -19,6 +21,10 @@ type PDF struct {
 	Page       Page        `mapstructure:"page"`
 	Text       Text        `mapstructure:"text"`
 	ImageWords []ImageWord `mapstructure:"images"`
+}
+
+func (p PDF) GetNbPictoPages() int {
+	return int(math.Ceil(float64(len(p.ImageWords)) / float64(p.Page.Cols*p.Page.Lines)))
 }
 
 type Page struct {

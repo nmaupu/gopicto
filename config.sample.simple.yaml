@@ -2,8 +2,8 @@ page:
   twoSidedOffsetMM:
     x: -3
     y: 0
-  cols: 3
-  lines: 3
+  cols: 2
+  lines: 2
   orientation: landscape
   page_margins:
     top: 45
@@ -57,5 +57,3 @@ images:
     text: Geisha 4
   - image: sample/jap.jpg
     text: Geisha 5
-  - image: sample/jap.jpg
-    text: Geisha 6
