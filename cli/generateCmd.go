@@ -224,7 +224,10 @@ func generateCmdFunc() {
 		}
 	}
 
-	pictoTextFontSize := setMaxFontSize(&pdf, longestText, cellW, cellH*cfg.Text.Ratio)
+	pictoTextFontSize := cfg.Text.FontSize
+	if pictoTextFontSize == 0 {
+		pictoTextFontSize = setMaxFontSize(&pdf, longestText, cellW, cellH*cfg.Text.Ratio)
+	}
 
 	nbPictoPages := cfg.GetNbPictoPages()
 	for page := 0; page < nbPictoPages; page++ {

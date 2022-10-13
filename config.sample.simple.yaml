@@ -23,6 +23,7 @@ page:
 text:
   # font: /some/font.ttf
   ratio: 1/6
+  size: 30
   color: steelblue
   top: true # Put the text at the top of the cell
   definitions:

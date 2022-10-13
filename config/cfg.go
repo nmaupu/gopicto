@@ -108,6 +108,7 @@ type ImageWord struct {
 type Text struct {
 	Font        string     `mapstructure:"font"`
 	Ratio       float64    `mapstructure:"ratio"`
+	FontSize    float64    `mapstructure:"size"`
 	Color       Color      `mapstructure:"color"`
 	Top         bool       `mapstructure:"top"`
 	Definitions Definition `mapstructure:"definitions"`
