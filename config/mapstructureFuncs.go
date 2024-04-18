@@ -81,3 +81,21 @@ func MapstructureStringToOrientation() mapstructure.DecodeHookFunc {
 		return Orientation(raw), nil
 	}
 }
+
+func MapstructureStringToTextAlign() mapstructure.DecodeHookFunc {
+	return func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
+		if f.Kind() != reflect.String || t != reflect.TypeOf(TextAlign("")) {
+			return data, nil
+		}
+
+		raw := data.(string)
+		if raw != string(TextAlignLeft) && raw != string(TextAlignCenter) {
+			return nil, fmt.Errorf("text align can only be center or left")
+		}
+
+		if raw == "" {
+			return DefaultTextAlign, nil
+		}
+		return TextAlign(raw), nil
+	}
+}

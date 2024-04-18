@@ -77,6 +77,7 @@ func initConfig() {
 		config.MapstructureStringToFloat64Expr(),
 		config.MapstructureStringToColor(),
 		config.MapstructureStringToOrientation(),
+		config.MapstructureStringToTextAlign(),
 	)
 
 	cfg := config.PDF{}
@@ -120,6 +121,9 @@ func initConfig() {
 		if iw.Def.LineSpacingRatio == 0 {
 			// Can't use iw here because it's a copy of the original object
 			cfg.ImageWords[k].Def.LineSpacingRatio = defaultLineSpacingRatio
+			if iw.Def.Align == "" {
+				cfg.ImageWords[k].Def.Align = config.TextAlignCenter
+			}
 		}
 	}
 
@@ -362,13 +366,16 @@ func printCellPicto(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize
 
 	//pdf.RectFromUpperLeft(c.X, c.Y+c.H-cellTextHeightPt, c.W, cellTextHeightPt)
 
+	ptwcX := c.X + c.W/2
+	ptwcY := c.Y + textOffsetY
 	printTextWithColors(pdf,
-		c.X+c.W/2,
-		c.Y+textOffsetY,
+		ptwcX,
+		ptwcY,
 		fontSize,
 		[]string{c.Text},
 		0,
 		c.ImageWord.TextColors, cfg.Text.Color,
+		config.TextAlignCenter,
 	)
 }
 
@@ -414,14 +421,20 @@ func printCellDefinition(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fon
 			Msg("lineSpacingRatio is zero")
 	}
 
+	ptwcX := c.X + c.W/2
+	ptwcY := c.Y + c.H/2
+	if c.Def.Definition.Align == config.TextAlignLeft {
+		ptwcX = c.X
+	}
 	printTextWithColors(pdf,
-		c.X+c.W/2,
-		c.Y+c.H/2,
+		ptwcX,
+		ptwcY,
 		newFontSize,
 		lines,
 		c.Def.LineSpacingRatio,
 		c.Def.TextColors,
 		defaultColor,
+		c.Def.Definition.Align,
 	)
 }
 
@@ -430,7 +443,7 @@ func printCellDefinition(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fon
 // y is the y coordinate of the **center of the text block**. Each lines will be spaced depending on line height and the given font size
 // So the whole text will be written so that y is in its center.
 // If there is one line, y is used as is
-func printTextWithColors(pdf *gopdf.GoPdf, x, y float64, fontSize float64, textLines []string, lineSpacingRatio float64, colors config.TextColors, defaultColor config.Color) {
+func printTextWithColors(pdf *gopdf.GoPdf, x, y float64, fontSize float64, textLines []string, lineSpacingRatio float64, colors config.TextColors, defaultColor config.Color, textAlign config.TextAlign) {
 	if len(textLines) == 0 {
 		return
 	}
@@ -456,7 +469,11 @@ func printTextWithColors(pdf *gopdf.GoPdf, x, y float64, fontSize float64, textL
 				Str("line", line).
 				Msg("unable to calculate text width")
 		}
-		pdf.SetX(x - textWidth/2)
+		if textAlign == config.TextAlignLeft {
+			pdf.SetX(x)
+		} else {
+			pdf.SetX(x - textWidth/2)
+		}
 		pdf.SetY(y + float64(j)*textHeight)
 		for _, char := range line {
 			color, ok := colors[charPos]
