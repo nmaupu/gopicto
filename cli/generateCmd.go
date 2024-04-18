@@ -362,9 +362,11 @@ func printCellPicto(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fontSize
 
 	//pdf.RectFromUpperLeft(c.X, c.Y+c.H-cellTextHeightPt, c.W, cellTextHeightPt)
 
+	ptwcX := c.X + c.W/2
+	ptwcY := c.Y + textOffsetY
 	printTextWithColors(pdf,
-		c.X+c.W/2,
-		c.Y+textOffsetY,
+		ptwcX,
+		ptwcY,
 		fontSize,
 		[]string{c.Text},
 		0,
@@ -414,9 +416,14 @@ func printCellDefinition(pdf *gopdf.GoPdf, cfg config.PDF, c draw.PictoCell, fon
 			Msg("lineSpacingRatio is zero")
 	}
 
+	ptwcX := c.X + c.W/2
+	ptwcY := c.Y + c.H/2
+	if c.Def.Definition.Align == config.TextAlignLeft {
+		ptwcX = c.X
+	}
 	printTextWithColors(pdf,
-		c.X+c.W/2,
-		c.Y+c.H/2,
+		ptwcX,
+		ptwcY,
 		newFontSize,
 		lines,
 		c.Def.LineSpacingRatio,

@@ -3,8 +3,10 @@ package config
 import "math"
 
 const (
-	Portrait  = Orientation("portrait")
-	Landscape = Orientation("landscape")
+	Portrait        = Orientation("portrait")
+	Landscape       = Orientation("landscape")
+	TextAlignCenter = TextAlign("center")
+	TextAlignLeft   = TextAlign("left")
 )
 
 var (
@@ -14,6 +16,8 @@ var (
 )
 
 type Orientation string
+
+type TextAlign string
 
 type TextColors map[int]Color
 
@@ -115,11 +119,12 @@ type Text struct {
 }
 
 type Definition struct {
-	Borders          bool    `mapstructure:"borders"`
-	Font             string  `mapstructure:"font"`
-	Size             float64 `mapstructure:"size"`
-	Color            Color   `mapstructure:"color"`
-	LineSpacingRatio float64 `mapstructure:"lineSpacingRatio"`
+	Borders          bool      `mapstructure:"borders"`
+	Font             string    `mapstructure:"font"`
+	Size             float64   `mapstructure:"size"`
+	Color            Color     `mapstructure:"color"`
+	LineSpacingRatio float64   `mapstructure:"lineSpacingRatio"`
+	Align            TextAlign `mapstructure:"align"`
 }
 
 type Color struct {
